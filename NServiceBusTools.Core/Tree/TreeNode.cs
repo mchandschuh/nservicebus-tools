@@ -12,17 +12,19 @@ namespace NServiceBusTools.Tree
     /// </summary>
     public class TreeNode : IEnumerable<TreeNode>
     {
-        private readonly HashSet<TreeNode> _children;
+        private readonly UniqueList<TreeNode> _children;
 
         /// <summary>
-        /// Gets the parent of this node, or null if this node is the root
+        /// Constructs a new instance of a generic tree node with the specified children
         /// </summary>
-        public TreeNode Parent { get; private set; }
-
-        /// <summary>
-        /// Gets all child nodes of this node
-        /// </summary>
-        public IEnumerable<TreeNode> Children => _children.AsEnumerable();
+        /// <typeparam name="T">The data type held at the tree noed</typeparam>
+        /// <param name="data">The data at the tree root</param>
+        /// <param name="children">The children of the new node</param>
+        /// <returns>The root tree node</returns>
+        public static TreeNode<T> Build<T>(T data, params TreeNode[] children)
+        {
+            return new TreeNode<T>(null, data, children);
+        }
 
         /// <summary>
         /// Builds a new tree data structure returning the root node. The tree is recursively
@@ -83,6 +85,22 @@ namespace NServiceBusTools.Tree
         }
 
         /// <summary>
+        /// Gets the parent of this node, or null if this node is the root
+        /// </summary>
+        public TreeNode Parent
+        {
+            get; private set;
+        }
+
+        /// <summary>
+        /// Gets all child nodes of this node
+        /// </summary>
+        public IEnumerable<TreeNode> Children
+        {
+            get { return _children.AsEnumerable(); }
+        }
+
+        /// <summary>
         /// Gets the depth of this node in the tree
         /// </summary>
         public int Depth
@@ -101,11 +119,32 @@ namespace NServiceBusTools.Tree
         }
 
         /// <summary>
+        /// Gets the root node of the tree this node belongs to
+        /// </summary>
+        public TreeNode Root
+        {
+            get
+            {
+                var root = this;
+                while (root.Parent != null) root = root.Parent;
+                return root;
+            }
+        }
+
+        /// <summary>
+        /// Gets the maximum depth of nodes in the tree this node belongs to
+        /// </summary>
+        public int MaximumTreeDepth
+        {
+            get { return Root.Max(x => x.Depth); }
+        }
+
+        /// <summary>
         /// Initializes a new empty instance of the <see cref="TreeNode"/> class
         /// </summary>
         public TreeNode()
         {
-            _children = new HashSet<TreeNode>();
+            _children = new UniqueList<TreeNode>();
         }
 
         /// <summary>
@@ -116,8 +155,14 @@ namespace NServiceBusTools.Tree
         public TreeNode(TreeNode parent, IEnumerable<TreeNode> children = null)
         {
             Parent = parent;
-            parent?._children.Add(this);
-            _children = new HashSet<TreeNode>(children ?? Enumerable.Empty<TreeNode>());
+            _children = new UniqueList<TreeNode>();
+            if (children != null)
+            {
+                foreach (var child in children)
+                {
+                    Add(child);
+                }
+            }
         }
 
         /// <summary>
@@ -127,8 +172,11 @@ namespace NServiceBusTools.Tree
         /// <param name="child">The child node to be added</param>
         public void Add(TreeNode child)
         {
-            child.Parent = this;
-            _children.Add(child);
+            if (_children.TryAdd(child))
+            {
+                child.Parent = this;
+                _children.Add(child);
+            }
         }
 
         /// <summary>
@@ -157,12 +205,19 @@ namespace NServiceBusTools.Tree
 
         public IEnumerator<TreeNode> GetEnumerator()
         {
-            return _children.GetEnumerator();
+            yield return this;
+            foreach (var outter in Children)
+            {
+                foreach (var inner in outter)
+                {
+                    yield return inner;
+                }
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return ((IEnumerable) _children).GetEnumerator();
+            return GetEnumerator();
         }
 
         public override string ToString()
@@ -177,7 +232,7 @@ namespace NServiceBusTools.Tree
         /// <returns></returns>
         protected virtual string ValueToString()
         {
-            return "+";
+            return Depth.ToString();
         }
 
         private void ToString(TextWriter tw, int padding)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NServiceBusTools.Tree
 {
@@ -21,7 +22,10 @@ namespace NServiceBusTools.Tree
         /// <summary>
         /// Gets the data held at this node
         /// </summary>
-        public T Data { get; set; }
+        public T Data
+        {
+            get; set;
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TreeNode{T}"/> class
@@ -46,6 +50,21 @@ namespace NServiceBusTools.Tree
             var child = new TreeNode<T>(null, data);
             Add(child);
             return child;
+        }
+
+        /// <summary>
+        /// Removes the first child node with the specified data
+        /// </summary>
+        /// <param name="data">The data of the child to be removed</param>
+        /// <returns>True if</returns>
+        public bool Remove(T data)
+        {
+            var node = Children.OfType<TreeNode<T>>().FirstOrDefault(x => x.Data.Equals(data));
+            if (node != null)
+            {
+                return Remove(node);
+            }
+            return false;
         }
 
         protected override string ValueToString()

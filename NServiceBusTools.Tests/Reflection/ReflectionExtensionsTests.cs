@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Mono.Cecil;
+using NServiceBusTools.Tree;
 using NUnit.Framework;
 
 namespace NServiceBusTools.Reflection
@@ -15,7 +16,7 @@ namespace NServiceBusTools.Reflection
         [Test]
         public void GetCallTreeByDefaultPreventsInfiniteLoop()
         {
-            var callTree = CallTreeSampleMethods.SelfReferencingMethodInfo.GetCallTree();
+            var callTree = CallTreeSampleMethods.SelfReferencingMethodInfo.AsMethodDefinition().GetCallTree();
             Assert.AreEqual(nameof(CallTreeSampleMethods.InfiniteLoop), callTree.Data.Name);
 
             Console.WriteLine(callTree);
@@ -24,8 +25,10 @@ namespace NServiceBusTools.Reflection
         [Test]
         public void GetCallTreeDateTimeNow()
         {
+            var maxDepthNavigator = new MaxDepthTreeNavigator(5);
             var methodInfo = typeof (DateTime).GetMethod("get_" + nameof(DateTime.Now));
-            var callTree = methodInfo.GetCallTree();
+            var methodDefinition = methodInfo.AsMethodDefinition();
+            var callTree = methodDefinition.GetCallTree(maxDepthNavigator);
             callTree.WriteTo(Console.Out);
         }
     }
