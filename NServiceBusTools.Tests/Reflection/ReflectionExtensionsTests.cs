@@ -11,6 +11,22 @@ using NUnit.Framework;
 namespace NServiceBusTools.Reflection
 {
     [TestFixture]
+    public class MethodCallTreeTests
+    {
+        [Test]
+        public void Test()
+        {
+            var ifElse = CallTreeSampleMethods.IfElseMethodInfo.AsMethodDefinition();
+            var tree = ifElse.GetCallTree();
+
+            foreach (var instruction in tree.Data.Body.Instructions)
+            {
+                Console.WriteLine(instruction);
+            }
+        }
+    }
+
+    [TestFixture]
     public class ReflectionExtensionsTests
     {
         [Test]
@@ -26,7 +42,7 @@ namespace NServiceBusTools.Reflection
         public void GetCallTreeDateTimeNow()
         {
             var maxDepthNavigator = new MaxDepthTreeNavigator(5);
-            var methodInfo = typeof (DateTime).GetMethod("get_" + nameof(DateTime.Now));
+            var methodInfo = Reflect.Property(() => DateTime.Now).GetMethod;
             var methodDefinition = methodInfo.AsMethodDefinition();
             var callTree = methodDefinition.GetCallTree(maxDepthNavigator);
             callTree.WriteTo(Console.Out);
@@ -36,10 +52,23 @@ namespace NServiceBusTools.Reflection
     public static class CallTreeSampleMethods
     {
         public static readonly MethodInfo SelfReferencingMethodInfo = typeof (CallTreeSampleMethods).GetMethod(nameof(InfiniteLoop));
+        public static readonly MethodInfo IfElseMethodInfo = Reflect.Method(() => IfElse(true));
 
         public static void InfiniteLoop()
         {
             InfiniteLoop();
+        }
+
+        public static int IfElse(bool condition)
+        {
+            if (condition)
+            {
+                return 0;
+            }
+            else
+            {
+                return 1;
+            }
         }
     }
 }

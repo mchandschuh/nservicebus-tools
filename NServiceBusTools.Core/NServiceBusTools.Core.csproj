@@ -56,8 +56,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Linq\Expressions\ExpressionExtensions.cs" />
     <Compile Include="Reflection\MonoCecilBridge.cs" />
     <Compile Include="Reflection\MethodCallTree.cs" />
+    <Compile Include="Reflection\Reflect.cs" />
     <Compile Include="Tree\ITreeNavigator.cs" />
     <Compile Include="Tree\MaxDepthTreeNavigator.cs" />
     <Compile Include="Tree\NullTreeNavigator.cs" />
