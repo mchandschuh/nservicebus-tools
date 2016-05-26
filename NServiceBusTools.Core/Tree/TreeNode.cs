@@ -1,6 +1,6 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 
@@ -10,9 +10,9 @@ namespace NServiceBusTools.Tree
     /// Defines a node in a tree data structure. Each node is permitted to have
     /// exactly a single parent node and zero or more child nodes.
     /// </summary>
-    public class TreeNode : IEnumerable<TreeNode>
+    public class TreeNode
     {
-        private readonly UniqueList<TreeNode> _children;
+        protected readonly UniqueList<TreeNode> Children;
 
         /// <summary>
         /// Constructs a new instance of a generic tree node with the specified children
@@ -36,9 +36,26 @@ namespace NServiceBusTools.Tree
         /// <param name="root">The root of the tree structure</param>
         /// <param name="children">Function used to select child nodes from a node</param>
         /// <returns>The new tree structure built from the specified recursive definition function</returns>
-        public static TreeNode<T> Build<T>(T root, Func<T, IEnumerable<T>> children)
+        public static TreeNode<T> Build<T>(T root, Func<TreeNode<T>, IEnumerable<T>> children)
         {
             return Build(root, NullTreeNavigator.Instance, children);
+        }
+
+        /// <summary>
+        /// Builds a new tree data structure returning the root node. The tree is recursively
+        /// defined by selecting child nodes from each node. Be aware of infinite recursion, as
+        /// this method will always step into children. Specify an instance of <see cref="ITreeNavigator{T}"/>
+        /// to have more control over when to step into child nodes
+        /// </summary>
+        /// <typeparam name="T">The type of data held at each node</typeparam>
+        /// <param name="root">The root of the tree structure</param>
+        /// <param name="navigateDeeper">Function delegate that, given a <see cref="TreeNode{T}"/>, decide whether or not
+        /// to advance deeper into the tree</param>
+        /// <param name="children">Function used to select child nodes from a node</param>
+        /// <returns>The new tree structure built from the specified recursive definition function</returns>
+        public static TreeNode<T> Build<T>(T root, Func<TreeNode<T>, bool> navigateDeeper, Func<TreeNode<T>, IEnumerable<T>> children)
+        {
+            return Build(root,new FuncTreeNavigator(n => navigateDeeper((TreeNode<T>) n)), children);
         }
 
         /// <summary>
@@ -47,10 +64,10 @@ namespace NServiceBusTools.Tree
         /// </summary>
         /// <typeparam name="T">The type of data held at each node</typeparam>
         /// <param name="root">The root of the tree structure</param>
-        /// <param name="navigator">Defines when to step into child nodes via the <see cref="ITreeNavigator{T}.NavigateDeeper"/> method</param>
+        /// <param name="navigator">Defines when to step into child nodes via the <see cref="ITreeNavigator.NavigateDeeper"/> method</param>
         /// <param name="children">Function used to select child nodes from a node</param>
         /// <returns>The new tree structure built from the specified recursive definition function</returns>
-        public static TreeNode<T> Build<T>(T root, ITreeNavigator navigator, Func<T, IEnumerable<T>> children)
+        public static TreeNode<T> Build<T>(T root, ITreeNavigator navigator, Func<TreeNode<T>, IEnumerable<T>> children)
         {
             return Build(null, root, navigator, children);
         }
@@ -63,21 +80,20 @@ namespace NServiceBusTools.Tree
         /// <typeparam name="T">The type of data held at each node</typeparam>
         /// <param name="parent">The parent node the produced sub-tree will be attached to</param>
         /// <param name="root">The root of the tree structure</param>
-        /// <param name="navigator">Defines when to step into child nodes via the <see cref="ITreeNavigator{T}.NavigateDeeper"/> method</param>
+        /// <param name="navigator">Defines when to step into child nodes via the <see cref="ITreeNavigator.NavigateDeeper"/> method</param>
         /// <param name="children">Function used to select child nodes from a node</param>
         /// <returns>The new tree structure built from the specified recursive definition function</returns>
-        public static TreeNode<T> Build<T>(TreeNode parent, T root, ITreeNavigator navigator, Func<T, IEnumerable<T>> children)
+        public static TreeNode<T> Build<T>(TreeNode parent, T root, ITreeNavigator navigator, Func<TreeNode<T>, IEnumerable<T>> children)
         {
             var tree = new TreeNode<T>(parent, root);
             if (navigator.NavigateDeeper(tree))
             {
-                var childNodes = children(root);
+                var childNodes = children(tree);
                 if (childNodes != null)
                 {
                     foreach (var child in childNodes)
                     {
-                        var childTreeNode = Build(tree, child, navigator, children);
-                        tree.Add(childTreeNode);
+                        tree.Add(child);
                     }
                 }
             }
@@ -95,9 +111,10 @@ namespace NServiceBusTools.Tree
         /// <summary>
         /// Gets all child nodes of this node
         /// </summary>
-        public IEnumerable<TreeNode> Children
+        public ReadOnlyCollection<TreeNode> GetChildren()
         {
-            get { return _children.AsEnumerable(); }
+            // return a copy!!
+           return new ReadOnlyCollection<TreeNode>(new List<TreeNode>(Children));
         }
 
         /// <summary>
@@ -136,7 +153,7 @@ namespace NServiceBusTools.Tree
         /// </summary>
         public int MaximumTreeDepth
         {
-            get { return Root.Max(x => x.Depth); }
+            get { return Root.AsEnumerable().Max(x => x.Depth); }
         }
 
         /// <summary>
@@ -144,7 +161,7 @@ namespace NServiceBusTools.Tree
         /// </summary>
         public TreeNode()
         {
-            _children = new UniqueList<TreeNode>();
+            Children = new UniqueList<TreeNode>();
         }
 
         /// <summary>
@@ -155,7 +172,7 @@ namespace NServiceBusTools.Tree
         public TreeNode(TreeNode parent, IEnumerable<TreeNode> children = null)
         {
             Parent = parent;
-            _children = new UniqueList<TreeNode>();
+            Children = new UniqueList<TreeNode>();
             if (children != null)
             {
                 foreach (var child in children)
@@ -172,10 +189,10 @@ namespace NServiceBusTools.Tree
         /// <param name="child">The child node to be added</param>
         public void Add(TreeNode child)
         {
-            if (_children.TryAdd(child))
+            if (Children.TryAdd(child))
             {
                 child.Parent = this;
-                _children.Add(child);
+                Children.Add(child);
             }
         }
 
@@ -186,7 +203,7 @@ namespace NServiceBusTools.Tree
         /// <returns>True if the child node was removed, false if it was not a child</returns>
         public bool Remove(TreeNode child)
         {
-            if (_children.Remove(child))
+            if (Children.Remove(child))
             {
                 child.Parent = null;
                 return true;
@@ -201,23 +218,6 @@ namespace NServiceBusTools.Tree
         public void WriteTo(TextWriter textWriter)
         {
             ToString(textWriter, 0);
-        }
-
-        public IEnumerator<TreeNode> GetEnumerator()
-        {
-            yield return this;
-            foreach (var outter in Children)
-            {
-                foreach (var inner in outter)
-                {
-                    yield return inner;
-                }
-            }
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
         }
 
         public override string ToString()

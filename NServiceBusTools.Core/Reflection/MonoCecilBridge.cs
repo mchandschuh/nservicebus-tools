@@ -43,6 +43,20 @@ namespace NServiceBusTools.Reflection
             return methodDefinition;
         }
 
+        public static TypeDefinition AsTypeDefinition(this Type type)
+        {
+            var assembly = type.Assembly;
+            var module = assembly.AsAssemblyDefinition().MainModule;
+
+            var typeDefinition = (
+                from t in module.GetTypes()
+                where t.IsEquivalentTo(type)
+                select t
+                ).SingleOrDefault();
+
+            return typeDefinition;
+        }
+
         /// <summary>
         /// Determines whether or not the specified <param name="typeDefinition"></param> and <param name="type"></param>
         /// are equivalent

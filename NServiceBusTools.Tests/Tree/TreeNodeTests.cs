@@ -26,19 +26,13 @@ namespace NServiceBusTools.Tree
             [Test]
             public void ChildrenIsEmpty()
             {
-                Assert.IsTrue(!_tree.Children.Any());
+                Assert.IsTrue(!_tree.Children().Any());
             }
 
             [Test]
             public void ParentIsNull()
             {
                 Assert.IsNull(_tree.Parent);
-            }
-
-            [Test]
-            public void EnumeratesRoot()
-            {
-                Assert.AreEqual(_tree, _tree.Single());
             }
 
             [Test]
@@ -70,22 +64,13 @@ namespace NServiceBusTools.Tree
             [Test]
             public void OnlyOneChildAdded()
             {
-                Assert.AreEqual(_child, _tree.Children.Single());
+                Assert.AreEqual(_child, _tree.Children().Single());
             }
 
             [Test]
             public void ChildReferencesRootAsParent()
             {
                 Assert.AreEqual(_tree, _child.Parent);
-            }
-
-            [Test]
-            public void EnumeratesRootAndChild()
-            {
-                var nodes = _tree.ToList();
-                Assert.AreEqual(2, nodes.Count);
-                Assert.AreEqual(_tree, nodes.First());
-                Assert.AreEqual(_child, nodes.Last());
             }
 
             [Test]
@@ -131,7 +116,7 @@ namespace NServiceBusTools.Tree
             [Test]
             public void TreeContainsAllSpecifiedChildren()
             {
-                CollectionAssert.AreEquivalent(new[] {_child1, _child2}, _tree.Children);
+                CollectionAssert.AreEquivalent(new[] {_child1, _child2}, _tree.Children());
             }
 
             [Test]
@@ -146,16 +131,6 @@ namespace NServiceBusTools.Tree
             {
                 Assert.AreEqual(1, _child1.Depth);
                 Assert.AreEqual(1, _child2.Depth);
-            }
-
-            [Test]
-            public void EnumeratesRootAndChildren()
-            {
-                var nodes = _tree.ToList();
-                Assert.AreEqual(3, nodes.Count);
-                Assert.AreEqual(_tree, nodes.First());
-                Assert.AreEqual(_child1, nodes.Skip(1).First());
-                Assert.AreEqual(_child2, nodes.Last());
             }
 
             [Test]
@@ -191,16 +166,6 @@ namespace NServiceBusTools.Tree
                             TreeNode.Build(7,
                                 TreeNode.Build(8))),
                         TreeNode.Build(9));
-            }
-
-            [Test]
-            public void EnumeratesInOrder()
-            {
-                var nodes = _tree.OfType<TreeNode<int>>().ToList();
-                for (int i = 0; i < nodes.Count; i++)
-                {
-                    Assert.AreEqual(i, nodes[i].Data);
-                }
             }
 
             [Test]

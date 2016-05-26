@@ -32,16 +32,17 @@ namespace NServiceBusTools.Reflection
         {
             return TreeNode.Build(method, navigator, m =>
             {
-                if (m.Body == null)
+                if (m.Data.Body == null)
                 {
                     return Enumerable.Empty<MethodDefinition>();
                 }
 
                 // get the methods called by this method
-                return from instruction in m.Body.Instructions
+                return from instruction in m.Data.Body.Instructions
                        where instruction.Operand is MethodReference
                        let methodReference = instruction.Operand as MethodReference
-                       select methodReference.Resolve();
+                       let methodDefinition = methodReference.Resolve()
+                       select methodDefinition;
             });
         }
     }
